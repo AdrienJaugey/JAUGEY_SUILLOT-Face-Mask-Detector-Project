@@ -8,8 +8,8 @@ print("Retrieving Kaggle dataset... ", end="")
 IMAGE_PATHS = MaskDataset.get_dataset()
 print("Done")
 print("Loading detector... ", end="")
-detector = TensorflowDetector(savedModelPath="jaugey_suillot/saved_model/",
-                              labelMapPath="jaugey_suillot/label_map.pbtxt")
+detector = TensorflowDetector(savedModelPath="jaugey_suillot_v1/saved_model/",
+                              labelMapPath="jaugey_suillot_v1/label_map.pbtxt")
 print("Done\n")
 
 print("Press q to quit after first image was displayed")
