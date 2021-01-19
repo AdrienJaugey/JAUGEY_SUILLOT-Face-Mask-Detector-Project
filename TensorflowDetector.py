@@ -24,7 +24,7 @@ def load_image_into_numpy_array(path):
 class TensorflowDetector:
     """
     Encapsulation of a Tensorflow saved model to facilitate inferences and visualisation
-    Based on : https://tensorflow-object-detection-api-tutorial.readthedocs.io/en/latest/auto_examples/plot_object_detection_saved_model.html#sphx-glr-auto-examples-plot-object-detection-saved-model-py
+    Based on : https://bit.ly/3p2iPDc
     """
 
     def __init__(self, savedModelPath: str, labelMapPath: str):
@@ -32,14 +32,20 @@ class TensorflowDetector:
                                                                                      use_display_name=True)
         self.__MODEL__ = tf.saved_model.load(savedModelPath)
 
-    def process(self, imagePath: str):
+    def process(self, image):
         """
         Run inference on an image
-        :param imagePath: path to the image to use
+        :param image: path to the image to use or the image itself
         :return: The image and refactored dict from the inference
         """
         # Load image into a tensor
-        image_np = load_image_into_numpy_array(imagePath)
+        assert image is not None, "Please provide at least a path to an image or an image directly."
+        if type(image) is str:
+            image_np = load_image_into_numpy_array(image)
+        elif type(image) is np.ndarray:
+            image_np = image.copy()
+        else:
+            assert False, "The type of image parameter does not match str or ndarray."
         input_tensor = tf.convert_to_tensor(image_np)
         input_tensor = input_tensor[tf.newaxis, ...]
 
@@ -55,6 +61,31 @@ class TensorflowDetector:
         # Cast detection classes to correct format
         detections['detection_classes'] = detections['detection_classes'].astype(np.int64)
         return image_np, detections
+
+    def getMapString(self, image, results, minScoreThreshold=0.30):
+        """
+        Format result to the https://github.com/Cartucho/mAP#create-the-detection-results-files format
+        :param image: the image to get the size from
+        :param results: the detections of the image
+        :param minScoreThreshold: Threshold to filter detections based on the score
+        :return: The formatted result as string
+        """
+        res = ""
+        for i in range(results['num_detections']):
+            score = results['detection_scores'][i]
+            if score >= minScoreThreshold:
+                height, width, _ = image.shape
+                yMin, xMin, yMax, xMax = tuple(results['detection_boxes'][i, :])
+                yMin = int(yMin * height)
+                xMin = int(xMin * width)
+                yMax = int(yMax * height)
+                xMax = int(xMax * width)
+                classId = results['detection_classes'][i]
+                className = self.__CATEGORY_INDEX__[classId]["name"]
+                # <class_name> <confidence> <left> <top> <right> <bottom>
+                res += "{}{} {:.6f} {} {} {} {}".format("" if res == "" else "\n", className, score,
+                                                        xMin, yMax, xMax, yMin)
+        return res
 
     def getResultImage(self, image, results: dict, maxBoxesToDraw=200, minScoreThreshold=0.30):
         """
@@ -76,6 +107,7 @@ class TensorflowDetector:
             use_normalized_coordinates=True,
             max_boxes_to_draw=maxBoxesToDraw,
             min_score_thresh=minScoreThreshold,
-            agnostic_mode=False)
+            agnostic_mode=False,
+            line_thickness=1)
 
         return image_with_detections
