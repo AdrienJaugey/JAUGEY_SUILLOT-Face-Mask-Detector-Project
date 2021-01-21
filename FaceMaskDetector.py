@@ -47,7 +47,7 @@ def inferenceOnFiles(detector: TensorflowDetector, saveImages=False, filePath=No
                 break
 
 
-def inferenceOnCamera(detector: TensorflowDetector, cap:VideoCapture, minScoreThreshold=None):
+def inferenceOnCamera(detector: TensorflowDetector, cap: VideoCapture, minScoreThreshold=None):
     """
     Run inference on camera stream
     :param detector: the TensorflowDetector instance
@@ -77,6 +77,7 @@ def inferenceOnCamera(detector: TensorflowDetector, cap:VideoCapture, minScoreTh
 
         cv2.imshow('Camera (Press q to quit)', imageWithResult)
         if cv2.waitKey(1) & 0xFF == ord('q'):
+            cv2.destroyAllWindows()
             break
 
 
@@ -86,11 +87,11 @@ def displayHelp():
     :return: None
     """
     print('To start inference on the eval dataset :')
-    print('ProjectMain.py --eval (--minScore <score> ) (--save) (--noviz)\n')
+    print('FaceMaskDetector.exe --eval (--minScore <score> ) (--save) (--noviz)\n')
     print('To start inference on the camera stream :')
-    print('ProjectMain.py --inference (--minScore <score> ) (--camera <camera name>)\n')
+    print('FaceMaskDetector.exe --inference (--minScore <score> ) (--camera <camera name>)\n')
     print('To start inference on a single image :')
-    print('ProjectMain.py --inference (--minScore <score> ) --file <file path> (--save) (--noviz)\n')
+    print('FaceMaskDetector.exe --inference (--minScore <score> ) --file <file path> (--save) (--noviz)\n')
     print("Available arguments :")
     print("\t--help, -h        Display this help.")
     print("\t--eval, -e        Launch in Evaluation mode (run inferences on kaggle dataset and save map files).")
@@ -158,6 +159,17 @@ def processArguments():
     return evalMode, inferenceMode, filePath, saveImages, noviz, minScore, cameraName
 
 
+def my_path(path_name):
+    """Return the appropriate path for data files based on execution context"""
+    # https://stackoverflow.com/questions/62518233/why-cant-my-pyinstaller-executable-access-data-files
+    if getattr(sys, 'frozen', False):
+        # running in a bundle
+        return os.path.join(sys._MEIPASS, path_name)
+    else:
+        # running live
+        return path_name
+
+
 if __name__ == "__main__":
     evalMode, inferenceMode, filePath, saveImages, noviz, minScore, cameraName = processArguments()
     print("#### START ####")
@@ -176,15 +188,19 @@ if __name__ == "__main__":
         camera = VideoCapture(cameraName)
         if cameraName != 0:
             print("Camera to use : {}".format(cameraName))
+
+    savedModelPath = my_path(os.path.join('jaugey_suillot_v1', 'saved_model'))
+    labelMapPath = my_path('label_map.json')
     print("\nLoading detector... ", end="", flush=True)
     start_time = time()
-    detector = TensorflowDetector(savedModelPath="jaugey_suillot_v1/saved_model/",
-                                  labelMapPath="label_map.json")
+    detector = TensorflowDetector(savedModelPath=savedModelPath, labelMapPath=labelMapPath)
     elapsed_time = time() - start_time
     print("Done ({:.2f} sec)\n".format(elapsed_time))
-    os.makedirs(os.path.join("results", "map"), exist_ok=True)
     if (inferenceMode and filePath is not None) or evalMode:
+        if evalMode or saveImages:
+            os.makedirs(os.path.join("results", "map"), exist_ok=True)
         inferenceOnFiles(detector, saveImages=saveImages, filePath=filePath, noviz=noviz, minScoreThreshold=minScore)
     else:
         inferenceOnCamera(detector, cap=camera, minScoreThreshold=minScore)
     print("#### END ####")
+    input("Pres ENTER to exit...")

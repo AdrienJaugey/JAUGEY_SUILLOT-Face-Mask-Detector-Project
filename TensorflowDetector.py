@@ -26,7 +26,7 @@ class TensorflowDetector:
     """
 
     def __init__(self, savedModelPath: str, labelMapPath: str):
-        with open('jaugey_suillot_v1/label_map.json', 'r') as file:
+        with open(labelMapPath, 'r') as file:
             self.__CATEGORY_INDEX__ = {int(key): value for key, value in json.load(file).items()}
         self.__MODEL__ = tf.saved_model.load(savedModelPath)
 

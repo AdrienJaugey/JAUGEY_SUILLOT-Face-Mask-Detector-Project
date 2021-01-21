@@ -1,0 +1,1 @@
+pyinstaller --onefile -c --add-data jaugey_suillot_v1/;jaugey_suillot_v1 --add-data label_map.json;. FaceMaskDetector.py
