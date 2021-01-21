@@ -27,7 +27,6 @@ def inferenceOnFiles(detector: TensorflowDetector, saveImages=False, filePath=No
         print("Done")
     else:
         IMAGE_PATHS = [filePath]
-    print("Press q to quit after first image was displayed")
     for image_path in IMAGE_PATHS:
         print("Running inference on {}... ".format(image_path), end="", flush=True)
         image, result = detector.process(image_path)
@@ -58,7 +57,6 @@ def inferenceOnCamera(detector: TensorflowDetector, cap: VideoCapture, minScoreT
         minScoreThreshold = 0.5
     nb_avg = 0
     avg_fps = 0
-    print("Press q to quit...")
     while True:
         frame = cap.read()
         if frame is None:
@@ -203,4 +201,3 @@ if __name__ == "__main__":
     else:
         inferenceOnCamera(detector, cap=camera, minScoreThreshold=minScore)
     print("#### END ####")
-    input("Pres ENTER to exit...")
