@@ -1,15 +1,13 @@
 import os
-
+import json
+import warnings
 import cv2
 import numpy as np
-
+warnings.filterwarnings('ignore')
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # Suppress TensorFlow logging (1)
 import tensorflow as tf
-
 tf.get_logger().setLevel('ERROR')  # Suppress TensorFlow logging (2)
 
-from models.research.object_detection.utils import label_map_util
-from models.research.object_detection.utils import visualization_utils as viz_utils
 
 # Enable GPU dynamic memory allocation
 gpus = tf.config.experimental.list_physical_devices('GPU')
@@ -28,8 +26,8 @@ class TensorflowDetector:
     """
 
     def __init__(self, savedModelPath: str, labelMapPath: str):
-        self.__CATEGORY_INDEX__ = label_map_util.create_category_index_from_labelmap(labelMapPath,
-                                                                                     use_display_name=True)
+        with open('jaugey_suillot_v1/label_map.json', 'r') as file:
+            self.__CATEGORY_INDEX__ = {int(key): value for key, value in json.load(file).items()}
         self.__MODEL__ = tf.saved_model.load(savedModelPath)
 
     def process(self, image):
@@ -62,52 +60,39 @@ class TensorflowDetector:
         detections['detection_classes'] = detections['detection_classes'].astype(np.int64)
         return image_np, detections
 
-    def getMapString(self, image, results, minScoreThreshold=0.30):
-        """
-        Format result to the https://github.com/Cartucho/mAP#create-the-detection-results-files format
-        :param image: the image to get the size from
-        :param results: the detections of the image
-        :param minScoreThreshold: Threshold to filter detections based on the score
-        :return: The formatted result as string
-        """
-        res = ""
-        for i in range(results['num_detections']):
-            score = results['detection_scores'][i]
-            if score >= minScoreThreshold:
-                height, width, _ = image.shape
-                yMin, xMin, yMax, xMax = tuple(results['detection_boxes'][i, :])
-                yMin = int(yMin * height)
-                xMin = int(xMin * width)
-                yMax = int(yMax * height)
-                xMax = int(xMax * width)
-                classId = results['detection_classes'][i]
-                className = self.__CATEGORY_INDEX__[classId]["name"]
-                # <class_name> <confidence> <left> <top> <right> <bottom>
-                res += "{}{} {:.6f} {} {} {} {}".format("" if res == "" else "\n", className, score,
-                                                        xMin, yMax, xMax, yMin)
-        return res
-
-    def getResultImage(self, image, results: dict, maxBoxesToDraw=200, minScoreThreshold=0.30):
+    def applyResults(self, image, results: dict, maxBoxesToDraw=200, minScoreThreshold=0.3, mapText=False):
         """
         Draw results on the image
         :param image: the image to draw the results on
         :param results: the detection results of the image
         :param maxBoxesToDraw: maximum number of boxes to draw on the image
         :param minScoreThreshold: minimum score of the boxes to draw
-        :return: The image with results
+        :param mapText: if True, will return the content of the map txt file as a string
+        :return: The image with results, the map file as string if enabled
         """
         image_with_detections = image.copy()
-
-        viz_utils.visualize_boxes_and_labels_on_image_array(
-            image_with_detections,
-            results['detection_boxes'],
-            results['detection_classes'],
-            results['detection_scores'],
-            self.__CATEGORY_INDEX__,
-            use_normalized_coordinates=True,
-            max_boxes_to_draw=maxBoxesToDraw,
-            min_score_thresh=minScoreThreshold,
-            agnostic_mode=False,
-            line_thickness=1)
-
-        return image_with_detections
+        resMapText = "" if mapText else None
+        boxesCount = 0
+        for idx in range(results['num_detections']):
+            score = results['detection_scores'][idx]
+            if score >= minScoreThreshold and boxesCount < maxBoxesToDraw:
+                height, width, _ = image.shape
+                yMin, xMin, yMax, xMax = tuple(results['detection_boxes'][idx, :])
+                yMin = int(yMin * height)
+                xMin = int(xMin * width)
+                yMax = int(yMax * height)
+                xMax = int(xMax * width)
+                classId = results['detection_classes'][idx]
+                className = self.__CATEGORY_INDEX__[classId]["name"]
+                color = tuple(self.__CATEGORY_INDEX__[classId]["color"])
+                if mapText:
+                    # <class_name> <confidence> <left> <top> <right> <bottom>
+                    resMapText += "{}{} {:.6f} {} {} {} {}".format("" if resMapText == "" else "\n", className, score,
+                                                                   xMin, yMax, xMax, yMin)
+                image_with_detections = cv2.rectangle(image_with_detections, (xMin, yMin), (xMax, yMax), color, 3)
+                scoreText = '{}: {:.0%}'.format(className, score)
+                image_with_detections[yMin - 12:yMin + 2, xMin:xMin + 9 * len(scoreText), :] = color
+                image_with_detections = cv2.putText(image_with_detections, scoreText, (xMin, yMin),
+                                                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
+                boxesCount += 1
+        return image_with_detections, resMapText

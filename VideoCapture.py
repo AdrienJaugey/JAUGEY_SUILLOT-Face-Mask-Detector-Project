@@ -1,6 +1,7 @@
-import cv2
-import queue
+import sys
 import threading
+import queue
+import cv2
 
 
 # https://stackoverflow.com/questions/43665208/how-to-get-the-latest-frame-from-capture-device-camera-in-opencv
@@ -8,6 +9,9 @@ class VideoCapture:
 
     def __init__(self, name):
         self.cap = cv2.VideoCapture(name)
+        if self.cap is None or not self.cap.isOpened():
+            print("No webcam available")
+            sys.exit(2)
         self.q = queue.Queue()
         t = threading.Thread(target=self._reader)
         t.daemon = True

@@ -1,15 +1,15 @@
-import getopt
 import os
 import sys
+import getopt
 from time import time
-
 import cv2
 import MaskDataset
-from TensorflowDetector import TensorflowDetector
 from VideoCapture import VideoCapture
+from TensorflowDetector import TensorflowDetector
 
 
-def inferenceOnFiles(detector:TensorflowDetector, saveImages=False, filePath=None, noviz=False, minScoreThreshold=None):
+def inferenceOnFiles(detector: TensorflowDetector, saveImages=False, filePath=None, noviz=False,
+                     minScoreThreshold=None):
     """
     Run inference on the image given or the Kaggle dataset
     :param detector: the TensorflowDetector instance
@@ -22,30 +22,32 @@ def inferenceOnFiles(detector:TensorflowDetector, saveImages=False, filePath=Non
     if minScoreThreshold is None:
         minScoreThreshold = 0.3
     if filePath is None:
-        print("Retrieving Kaggle dataset... ", end="")
+        print("Retrieving Kaggle dataset... ", end="", flush=True)
         IMAGE_PATHS = MaskDataset.get_dataset()
         print("Done")
     else:
         IMAGE_PATHS = [filePath]
     print("Press q to quit after first image was displayed")
     for image_path in IMAGE_PATHS:
-        print("Running inference on {}... ".format(image_path), end="")
+        print("Running inference on {}... ".format(image_path), end="", flush=True)
         image, result = detector.process(image_path)
+        image, mapText = detector.applyResults(image, result, maxBoxesToDraw=30,
+                                               minScoreThreshold=minScoreThreshold,
+                                               mapText=filePath is None)
         if filePath is None:  # Eval mode
             with open(os.path.join("results", "map", os.path.basename(image_path).split('.')[0] + '.txt'),
                       'w') as mapFile:
-                mapFile.write(detector.getMapString(image, result))
-        imageWithResult = detector.getResultImage(image, result, maxBoxesToDraw=100, minScoreThreshold=minScoreThreshold)
+                mapFile.write(mapText)
         print("Done")
         if saveImages:
-            cv2.imwrite(os.path.join("results", os.path.basename(image_path)), imageWithResult)
+            cv2.imwrite(os.path.join("results", os.path.basename(image_path)), image)
         if not noviz:
-            cv2.imshow('Detection (Press q to quit)', imageWithResult)
+            cv2.imshow('Detection (Press q to quit)', image)
             if cv2.waitKey(1000) & 0xFF == ord('q'):
                 break
 
 
-def inferenceOnCamera(detector:TensorflowDetector, minScoreThreshold=None):
+def inferenceOnCamera(detector: TensorflowDetector, cap:VideoCapture, minScoreThreshold=None):
     """
     Run inference on camera stream
     :param detector: the TensorflowDetector instance
@@ -54,8 +56,6 @@ def inferenceOnCamera(detector:TensorflowDetector, minScoreThreshold=None):
     """
     if minScoreThreshold is None:
         minScoreThreshold = 0.5
-    cap = VideoCapture(0)
-    # cap = VideoCapture("http://192.168.1.19:8080/video")
     nb_avg = 0
     avg_fps = 0
     print("Press q to quit...")
@@ -65,18 +65,15 @@ def inferenceOnCamera(detector:TensorflowDetector, minScoreThreshold=None):
             continue
         start_time = time()
         image, result = detector.process(frame)
-        imageWithResult = detector.getResultImage(image, result, maxBoxesToDraw=30, minScoreThreshold=minScoreThreshold)
+        imageWithResult, _ = detector.applyResults(image, result, maxBoxesToDraw=30,
+                                                   minScoreThreshold=minScoreThreshold)
         elapsed_time = time() - start_time
         fps = 1 / elapsed_time
         nb_avg += 1
         avg_fps = fps if nb_avg == 1 else ((avg_fps * (nb_avg - 1)) / nb_avg + (fps / nb_avg))
 
         imageWithResult = cv2.putText(imageWithResult, '{:.2f} FPS (avg : {:.2f})'.format(fps, avg_fps),
-                                      (0, 15),
-                                      cv2.FONT_HERSHEY_SIMPLEX,
-                                      0.5,
-                                      (0, 0, 255),
-                                      2)
+                                      (0, 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
 
         cv2.imshow('Camera (Press q to quit)', imageWithResult)
         if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -88,9 +85,13 @@ def displayHelp():
     Display the help "screen"
     :return: None
     """
-    print('ProjectMain.py -h')
-    print('ProjectMain.py --eval (--minScore <score> ) (--save) (--noviz)')
-    print('ProjectMain.py --inference (--minScore <score> ) (--file <file path> (--save) (--noviz))')
+    print('To start inference on the eval dataset :')
+    print('ProjectMain.py --eval (--minScore <score> ) (--save) (--noviz)\n')
+    print('To start inference on the camera stream :')
+    print('ProjectMain.py --inference (--minScore <score> ) (--camera <camera name>)\n')
+    print('To start inference on a single image :')
+    print('ProjectMain.py --inference (--minScore <score> ) --file <file path> (--save) (--noviz)\n')
+    print("Available arguments :")
     print("\t--help, -h        Display this help.")
     print("\t--eval, -e        Launch in Evaluation mode (run inferences on kaggle dataset and save map files).")
     print("\t--inference, -i   Launch in Inference mode (Use camera flow as input).")
@@ -98,6 +99,7 @@ def displayHelp():
     print("\t--file, -f        Specify the input image for Inference mode instead of using camera.")
     print("\t--save, -s        Images with detection results will be saved (not when using camera).")
     print("\t--noviz           Image(s) will not be displayed.")
+    print("\t--camera, -c      Choosing camera/video stream to use. Default is 0.")
 
 
 def processArguments():
@@ -111,8 +113,10 @@ def processArguments():
     saveImages = False
     noviz = False
     minScore = None
+    cameraName = 0
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "heif:sm:", ["help", "eval", "inference", "file=", "save", "minScore=", "noviz"])
+        opts, args = getopt.getopt(sys.argv[1:], "heif:sm:c:",
+                                   ["help", "eval", "inference", "file=", "save", "minScore=", "noviz", "camera="])
     except getopt.GetoptError:
         displayHelp()
         sys.exit(2)
@@ -149,32 +153,38 @@ def processArguments():
             minScore = float(arg)
         elif opt == "--noviz":
             noviz = True
-    return evalMode, inferenceMode, filePath, saveImages, noviz, minScore
+        elif opt in ("-c", "--camera"):
+            cameraName = arg
+    return evalMode, inferenceMode, filePath, saveImages, noviz, minScore, cameraName
 
 
 if __name__ == "__main__":
-    evalMode, inferenceMode, filePath, saveImages, noviz, minScore = processArguments()
+    evalMode, inferenceMode, filePath, saveImages, noviz, minScore, cameraName = processArguments()
     print("#### START ####")
     if not (evalMode or inferenceMode):
         inferenceMode = True
-    print("Eval mode" if evalMode else "Inference mode")
+    print("Mode : ", "Evaluation" if evalMode else "Inference")
     if minScore is not None:
-        print("Detection minimum threshold set to {}".format(minScore))
+        print("Detection minimum threshold : {:.2%}".format(minScore))
     if filePath is not None:
-        print("File Path = {}".format(filePath))
+        print("File Path : {}".format(filePath))
     if saveImages:
-        print("Saving files")
+        print("Image(s) will be saved")
     if noviz:
-        print("No display of image(s)")
-    print("Loading detector... ", end="")
+        print("Image(s) will be displayed")
+    if inferenceMode and filePath is None:
+        camera = VideoCapture(cameraName)
+        if cameraName != 0:
+            print("Camera to use : {}".format(cameraName))
+    print("\nLoading detector... ", end="", flush=True)
     start_time = time()
     detector = TensorflowDetector(savedModelPath="jaugey_suillot_v1/saved_model/",
-                                  labelMapPath="jaugey_suillot_v1/label_map.pbtxt")
+                                  labelMapPath="jaugey_suillot_v1/label_map.json")
     elapsed_time = time() - start_time
     print("Done ({:.2f} sec)\n".format(elapsed_time))
     os.makedirs(os.path.join("results", "map"), exist_ok=True)
     if (inferenceMode and filePath is not None) or evalMode:
         inferenceOnFiles(detector, saveImages=saveImages, filePath=filePath, noviz=noviz, minScoreThreshold=minScore)
     else:
-        inferenceOnCamera(detector, minScoreThreshold=minScore)
+        inferenceOnCamera(detector, cap=camera, minScoreThreshold=minScore)
     print("#### END ####")
