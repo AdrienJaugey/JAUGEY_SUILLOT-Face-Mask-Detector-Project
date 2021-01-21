@@ -18,21 +18,31 @@ We will use the same classes as the Kaggle dataset :
  
  ## How to use
   1. Download or clone this repository
-  2. Download or clone the [tensorflow/models repository](https://github.com/tensorflow/models)
-  3. Move "models" directory inside this repo directory
-  4. Install the OD API
-     * [Tutorial](https://towardsdatascience.com/creating-your-own-object-detector-ad69dda69c85), you can skip the docker part,
-     * If you have a CUDA-Capable GPU, you can install CUDA and cuDNN for your TensorFlow version.
-  5. Using the same environment/python as the OD API, start the ```ProjectMain.py```
+  2. Create a new Python environment (virtualenv, conda...)
+  3. Using this environment, install pip packages using ```requirements.txt``` file
+     * In your terminal, type ```python -m pip install -r requirements.txt```,
+     * If you have a CUDA-Capable GPU, you can install CUDA and cuDNN for TensorFlow 2.3.1.
+  5. Start the ```ProjectMain.py``` script
   
   ```
-  python ProjectMain.py [-h | --eval (--save) (--noviz)| --inference (--file <file path> (--save) (--noviz))]
-      --help, -h        Display this help.
-      --eval, -e        Launch in Evaluation mode (run inferences on kaggle dataset and save map files).
-      --inference, -i   Launch in Inference mode (Use camera flow as input).
-      --file, -f        Specify the input image for Inference mode instead of using camera.
-      --save, -s        Images with detection results will be saved (not when using camera).
-      --noviz           Image(s) will not be displayed.
+To start inference on the eval dataset :
+ProjectMain.py --eval (--minScore <score> ) (--save) (--noviz)
+
+To start inference on the camera stream :
+ProjectMain.py --inference (--minScore <score> ) (--camera <camera name>)
+
+To start inference on a single image :
+ProjectMain.py --inference (--minScore <score> ) --file <file path> (--save) (--noviz)
+
+Available arguments :
+        --help, -h        Display this help.
+        --eval, -e        Launch in Evaluation mode (run inferences on kaggle dataset and save map files).
+        --inference, -i   Launch in Inference mode (Use camera flow as input).
+        --minScore, -m    Set the minimum score to display a detection (between 0 and 1 inclusive).
+        --file, -f        Specify the input image for Inference mode instead of using camera.
+        --save, -s        Images with detection results will be saved (not when using camera).
+        --noviz           Image(s) will not be displayed.
+        --camera, -c      Choosing camera/video stream to use. Default is 0.
   ```
  
  ## Project Members
