@@ -179,7 +179,7 @@ if __name__ == "__main__":
     print("\nLoading detector... ", end="", flush=True)
     start_time = time()
     detector = TensorflowDetector(savedModelPath="jaugey_suillot_v1/saved_model/",
-                                  labelMapPath="jaugey_suillot_v1/label_map.json")
+                                  labelMapPath="label_map.json")
     elapsed_time = time() - start_time
     print("Done ({:.2f} sec)\n".format(elapsed_time))
     os.makedirs(os.path.join("results", "map"), exist_ok=True)

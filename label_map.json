@@ -1,0 +1,17 @@
+{
+	"1": {
+		"id": 1,
+		"name": "without_mask",
+		"color": [0, 0, 255]
+	},
+	"2": {
+		"id": 2,
+		"name": "with_mask",
+		"color": [0, 255, 0]
+	},
+	"3": {
+		"id": 3,
+		"name": "mask_weared_incorrect",
+		"color": [0, 106, 255]
+	}
+}
