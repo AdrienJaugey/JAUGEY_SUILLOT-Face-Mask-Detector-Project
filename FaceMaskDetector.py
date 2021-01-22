@@ -20,13 +20,14 @@ def inferenceOnFiles(detector: TensorflowDetector, saveImages=False, filePath=No
     :return: None
     """
     if minScoreThreshold is None:
-        minScoreThreshold = 0.3
+        minScoreThreshold = 0.4
     if filePath is None:
         print("Retrieving Kaggle dataset... ", end="", flush=True)
         IMAGE_PATHS = MaskDataset.get_dataset()
         print("Done")
     else:
         IMAGE_PATHS = [filePath]
+    intentionnalStop = False
     for image_path in IMAGE_PATHS:
         print("Running inference on {}... ".format(image_path), end="", flush=True)
         image, result = detector.process(image_path)
@@ -42,8 +43,13 @@ def inferenceOnFiles(detector: TensorflowDetector, saveImages=False, filePath=No
             cv2.imwrite(os.path.join("results", os.path.basename(image_path)), image)
         if not noviz:
             cv2.imshow('Detection (Press q to quit)', image)
-            if cv2.waitKey(1000) & 0xFF == ord('q'):
+            if cv2.waitKey(500) & 0xFF == ord('q'):
+                intentionnalStop = True
                 break
+    if not noviz and not intentionnalStop:
+        print("Inference(s) done ! Press q to quit...")
+        if cv2.waitKey(0) & 0xFF == ord('q'):
+            cv2.destroyAllWindows()
 
 
 def inferenceOnCamera(detector: TensorflowDetector, cap: VideoCapture, minScoreThreshold=None):
@@ -54,7 +60,7 @@ def inferenceOnCamera(detector: TensorflowDetector, cap: VideoCapture, minScoreT
     :return: None
     """
     if minScoreThreshold is None:
-        minScoreThreshold = 0.5
+        minScoreThreshold = 0.6
     nb_avg = 0
     avg_fps = 0
     while True:
@@ -85,15 +91,16 @@ def displayHelp():
     :return: None
     """
     print('To start inference on the eval dataset :')
-    print('FaceMaskDetector.exe --eval (--minScore <score> ) (--save) (--noviz)\n')
+    print('  FaceMaskDetector.exe --eval [--version <version name>] [--minScore <score>] [--save] [--noviz]\n')
     print('To start inference on the camera stream :')
-    print('FaceMaskDetector.exe --inference (--minScore <score> ) (--camera <camera name>)\n')
+    print('  FaceMaskDetector.exe --inference [--version <version name>] [--minScore <score>] [--camera <camera name>]\n')
     print('To start inference on a single image :')
-    print('FaceMaskDetector.exe --inference (--minScore <score> ) --file <file path> (--save) (--noviz)\n')
+    print('  FaceMaskDetector.exe --inference [--version <version name>] [--minScore <score>] --file <file path> [--save] [--noviz]\n')
     print("Available arguments :")
     print("\t--help, -h        Display this help.")
     print("\t--eval, -e        Launch in Evaluation mode (run inferences on kaggle dataset and save map files).")
     print("\t--inference, -i   Launch in Inference mode (Use camera flow as input).")
+    print("\t--version, -v     Select the model to use. Available models are : {}".format(", ".join(list(AVAILABLE_MODELS.keys()))))
     print("\t--minScore, -m    Set the minimum score to display a detection (between 0 and 1 inclusive).")
     print("\t--file, -f        Specify the input image for Inference mode instead of using camera.")
     print("\t--save, -s        Images with detection results will be saved (not when using camera).")
@@ -108,14 +115,15 @@ def processArguments():
     """
     evalMode = False
     inferenceMode = False
+    model = list(AVAILABLE_MODELS.keys())[0]
     filePath = None
     saveImages = False
     noviz = False
     minScore = None
     cameraName = 0
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "heif:sm:c:",
-                                   ["help", "eval", "inference", "file=", "save", "minScore=", "noviz", "camera="])
+        opts, args = getopt.getopt(sys.argv[1:], "heiv:f:sm:c:",
+                                   ["help", "eval", "inference", "version=", "file=", "save", "minScore=", "noviz", "camera="])
     except getopt.GetoptError:
         displayHelp()
         sys.exit(2)
@@ -133,6 +141,13 @@ def processArguments():
             inferenceMode = True
             if evalMode == inferenceMode:
                 print("Cannot use evaluation mode and inference mode at the same time.\n")
+                displayHelp()
+                sys.exit(2)
+        elif opt in ("-v", "--version"):
+            if arg in AVAILABLE_MODELS:
+                model = arg
+            else:
+                print("This version does not exists, please use available version.\n")
                 displayHelp()
                 sys.exit(2)
         elif opt in ("-f", "--file"):
@@ -154,7 +169,7 @@ def processArguments():
             noviz = True
         elif opt in ("-c", "--camera"):
             cameraName = arg
-    return evalMode, inferenceMode, filePath, saveImages, noviz, minScore, cameraName
+    return evalMode, inferenceMode, model, filePath, saveImages, noviz, minScore, cameraName
 
 
 def my_path(path_name):
@@ -168,12 +183,19 @@ def my_path(path_name):
         return path_name
 
 
+AVAILABLE_MODELS = {
+    "d1_v1": {'path': "jaugey_suillot_d1_v1",
+              "description": "EfficientDet D1 (Batch of 4, 53100 steps, LR = .002, Warmup LR = .0001, 12000 warmup steps)"}
+}
+# , "d0_v1": {'path': "jaugey_suillot_d0_v1", "description": "EfficientDet D0 (Batch of 8, 53100 steps, LR = .04, Warmup LR = .0001, 5310 warmup steps)"}
+
 if __name__ == "__main__":
-    evalMode, inferenceMode, filePath, saveImages, noviz, minScore, cameraName = processArguments()
+    evalMode, inferenceMode, model, filePath, saveImages, noviz, minScore, cameraName = processArguments()
     print("#### START ####")
     if not (evalMode or inferenceMode):
         inferenceMode = True
     print("Mode : ", "Evaluation" if evalMode else "Inference")
+    print("Model used : {}".format(AVAILABLE_MODELS[model]["description"]))
     if minScore is not None:
         print("Detection minimum threshold : {:.2%}".format(minScore))
     if filePath is not None:
@@ -181,13 +203,12 @@ if __name__ == "__main__":
     if saveImages:
         print("Image(s) will be saved")
     if noviz:
-        print("Image(s) will be displayed")
+        print("Image(s) will not be displayed")
     if inferenceMode and filePath is None:
         camera = VideoCapture(cameraName)
         if cameraName != 0:
             print("Camera to use : {}".format(cameraName))
-
-    savedModelPath = my_path(os.path.join('jaugey_suillot_v1', 'saved_model'))
+    savedModelPath = my_path(os.path.join(AVAILABLE_MODELS[model]["path"], 'saved_model'))
     labelMapPath = my_path('label_map.json')
     print("\nLoading detector... ", end="", flush=True)
     start_time = time()
