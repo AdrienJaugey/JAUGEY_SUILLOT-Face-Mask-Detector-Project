@@ -22,17 +22,19 @@ We will use the same classes as the Kaggle dataset :
   3. Using this environment, install pip packages using ```requirements.txt``` file
      * In your terminal, type ```python -m pip install -r requirements.txt```,
      * If you have a CUDA-Capable GPU, you can install CUDA and cuDNN for TensorFlow 2.3.1.
-  5. Start the ```ProjectMain.py``` script
+  4. Build the application using the following command :
+     * ```pyinstaller --onefile -c --add-data jaugey_suillot_v1/;jaugey_suillot_v1 --add-data label_map.json;. FaceMaskDetector.py```
+  5. Start the ```FaceMaskDetector.exe``` (located in the ```dist``` directory) using a command prompt
   
   ```
 To start inference on the eval dataset :
-ProjectMain.py --eval (--minScore <score> ) (--save) (--noviz)
+FaceMaskDetector.exe --eval (--minScore <score> ) (--save) (--noviz)
 
 To start inference on the camera stream :
-ProjectMain.py --inference (--minScore <score> ) (--camera <camera name>)
+FaceMaskDetector.exe --inference (--minScore <score> ) (--camera <camera name>)
 
 To start inference on a single image :
-ProjectMain.py --inference (--minScore <score> ) --file <file path> (--save) (--noviz)
+FaceMaskDetector.exe --inference (--minScore <score> ) --file <file path> (--save) (--noviz)
 
 Available arguments :
         --help, -h        Display this help.
