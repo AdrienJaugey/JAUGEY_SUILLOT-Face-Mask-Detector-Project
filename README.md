@@ -23,7 +23,7 @@ We will use the same classes as the Kaggle dataset :
      * In your terminal, type ```python -m pip install -r requirements.txt```,
      * If you have a CUDA-Capable GPU, you can install CUDA and cuDNN for TensorFlow 2.3.1.
   4. Build the application using the following command :
-     * ```pyinstaller --onefile -c --add-data jaugey_suillot_v1/;jaugey_suillot_v1 --add-data label_map.json;. FaceMaskDetector.py```
+     * ```pyinstaller --onefile -c --add-data jaugey_suillot_v1/;jaugey_suillot_v1 --add-data label_map.json;. --icon ./FaceMaskDetector.ico FaceMaskDetector.py```
   5. Start the ```FaceMaskDetector.exe``` (located in the ```dist``` directory) using a command prompt
   
   ```
