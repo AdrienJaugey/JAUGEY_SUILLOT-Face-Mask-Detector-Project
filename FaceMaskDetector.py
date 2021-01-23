@@ -3,7 +3,7 @@ import sys
 import getopt
 from time import time
 import cv2
-import MaskDataset
+# import MaskDataset
 from VideoCapture import VideoCapture
 from TensorflowDetector import TensorflowDetector
 
@@ -22,18 +22,25 @@ def inferenceOnFiles(detector: TensorflowDetector, saveImages=False, filePath=No
     if minScoreThreshold is None:
         minScoreThreshold = 0.4
     if filePath is None:
-        print("Retrieving Kaggle dataset... ", end="", flush=True)
-        IMAGE_PATHS = MaskDataset.get_dataset()
-        print("Done")
+        # print("Retrieving Kaggle dataset... ", end="", flush=True)
+        # IMAGE_PATHS = MaskDataset.get_dataset()
+        # print("Done")
+        imageDir = "images"
+        assert os.path.exists(imageDir), "Please put the evaluation images in a folder named \"images\""
+        IMAGE_PATHS = [os.path.join('images', x) for x in os.listdir('images')]
     else:
         IMAGE_PATHS = [filePath]
     intentionnalStop = False
+    time_sum = 0
     for image_path in IMAGE_PATHS:
         print("Running inference on {}... ".format(image_path), end="", flush=True)
+        img_start_time = time()
         image, result = detector.process(image_path)
         image, mapText = detector.applyResults(image, result, maxBoxesToDraw=30,
                                                minScoreThreshold=minScoreThreshold,
+                                               drawImage=saveImages or not noviz,
                                                mapText=filePath is None)
+        time_sum += time() - img_start_time
         if filePath is None:  # Eval mode
             with open(os.path.join("results", "map", os.path.basename(image_path).split('.')[0] + '.txt'),
                       'w') as mapFile:
@@ -44,8 +51,11 @@ def inferenceOnFiles(detector: TensorflowDetector, saveImages=False, filePath=No
         if not noviz:
             cv2.imshow('Detection (Press q to quit)', image)
             if cv2.waitKey(500) & 0xFF == ord('q'):
+                cv2.destroyAllWindows()
                 intentionnalStop = True
                 break
+    avg_time = round(time_sum / len(IMAGE_PATHS), 4)
+    print("Time per frame : {:.4f} sec".format(avg_time))
     if not noviz and not intentionnalStop:
         print("Inference(s) done ! Press q to quit...")
         if cv2.waitKey(0) & 0xFF == ord('q'):
@@ -67,12 +77,12 @@ def inferenceOnCamera(detector: TensorflowDetector, cap: VideoCapture, minScoreT
         frame = cap.read()
         if frame is None:
             continue
-        start_time = time()
+        frame_start_time = time()
         image, result = detector.process(frame)
         imageWithResult, _ = detector.applyResults(image, result, maxBoxesToDraw=30,
                                                    minScoreThreshold=minScoreThreshold)
-        elapsed_time = time() - start_time
-        fps = 1 / elapsed_time
+        frame_total_time = time() - frame_start_time
+        fps = 1 / frame_total_time
         nb_avg += 1
         avg_fps = fps if nb_avg == 1 else ((avg_fps * (nb_avg - 1)) / nb_avg + (fps / nb_avg))
 
@@ -98,7 +108,7 @@ def displayHelp():
     print('  FaceMaskDetector.exe --inference [--version <version name>] [--minScore <score>] --file <file path> [--save] [--noviz]\n')
     print("Available arguments :")
     print("\t--help, -h        Display this help.")
-    print("\t--eval, -e        Launch in Evaluation mode (run inferences on kaggle dataset and save map files).")
+    print("\t--eval, -e        Launch in Evaluation mode (run inferences on \"images\" folder).")
     print("\t--inference, -i   Launch in Inference mode (Use camera flow as input).")
     print("\t--version, -v     Select the model to use. Available models are : {}".format(", ".join(list(AVAILABLE_MODELS.keys()))))
     print("\t--minScore, -m    Set the minimum score to display a detection (between 0 and 1 inclusive).")
@@ -184,10 +194,11 @@ def my_path(path_name):
 
 
 AVAILABLE_MODELS = {
+    "d0_v1": {'path': "jaugey_suillot_d0_v1",
+              "description": "EfficientDet D0 (Batch of 8, 53100 steps, LR = .04, Warmup LR = .0001, 5310 warmup steps)"},
     "d1_v1": {'path': "jaugey_suillot_d1_v1",
               "description": "EfficientDet D1 (Batch of 4, 53100 steps, LR = .002, Warmup LR = .0001, 12000 warmup steps)"}
 }
-# , "d0_v1": {'path': "jaugey_suillot_d0_v1", "description": "EfficientDet D0 (Batch of 8, 53100 steps, LR = .04, Warmup LR = .0001, 5310 warmup steps)"}
 
 if __name__ == "__main__":
     evalMode, inferenceMode, model, filePath, saveImages, noviz, minScore, cameraName = processArguments()

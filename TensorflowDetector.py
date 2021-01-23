@@ -60,17 +60,18 @@ class TensorflowDetector:
         detections['detection_classes'] = detections['detection_classes'].astype(np.int64)
         return image_np, detections
 
-    def applyResults(self, image, results: dict, maxBoxesToDraw=200, minScoreThreshold=0.3, mapText=False):
+    def applyResults(self, image, results: dict, maxBoxesToDraw=200, minScoreThreshold=0.3, drawImage=True, mapText=False):
         """
         Draw results on the image
         :param image: the image to draw the results on
         :param results: the detection results of the image
         :param maxBoxesToDraw: maximum number of boxes to draw on the image
         :param minScoreThreshold: minimum score of the boxes to draw
+        :param drawImage: if True, will draw bboxes on the image
         :param mapText: if True, will return the content of the map txt file as a string
-        :return: The image with results, the map file as string if enabled
+        :return: The image with results if enabled else None, the map file as string if enabled
         """
-        image_with_detections = image.copy()
+        image_with_detections = image.copy() if drawImage else None
         resMapText = "" if mapText else None
         boxesCount = 0
         for idx in range(results['num_detections']):
@@ -84,15 +85,16 @@ class TensorflowDetector:
                 xMax = int(xMax * width)
                 classId = results['detection_classes'][idx]
                 className = self.__CATEGORY_INDEX__[classId]["name"]
-                color = tuple(self.__CATEGORY_INDEX__[classId]["color"])
                 if mapText:
                     # <class_name> <confidence> <left> <top> <right> <bottom>
                     resMapText += "{}{} {:.6f} {} {} {} {}".format("" if resMapText == "" else "\n", className, score,
                                                                    xMin, yMax, xMax, yMin)
-                image_with_detections = cv2.rectangle(image_with_detections, (xMin, yMin), (xMax, yMax), color, 3)
-                scoreText = '{}: {:.0%}'.format(className, score)
-                image_with_detections[yMin - 12:yMin + 2, xMin:xMin + 9 * len(scoreText), :] = color
-                image_with_detections = cv2.putText(image_with_detections, scoreText, (xMin, yMin),
-                                                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
+                if drawImage:
+                    color = tuple(self.__CATEGORY_INDEX__[classId]["color"])
+                    image_with_detections = cv2.rectangle(image_with_detections, (xMin, yMin), (xMax, yMax), color, 3)
+                    scoreText = '{}: {:.0%}'.format(className, score)
+                    image_with_detections[yMin - 12:yMin + 2, xMin:xMin + 9 * len(scoreText), :] = color
+                    image_with_detections = cv2.putText(image_with_detections, scoreText, (xMin, yMin),
+                                                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
                 boxesCount += 1
         return image_with_detections, resMapText

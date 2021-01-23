@@ -40,7 +40,7 @@ Available arguments :
         --help, -h        Display this help.
         --eval, -e        Launch in Evaluation mode (run inferences on kaggle dataset and save map files).
         --inference, -i   Launch in Inference mode (Use camera flow as input).
-        --version, -v     Select the model to use. Available models are : d1_v1
+        --version, -v     Select the model to use. Available models are : d0_v1, d1_v1
         --minScore, -m    Set the minimum score to display a detection (between 0 and 1 inclusive).
         --file, -f        Specify the input image for Inference mode instead of using camera.
         --save, -s        Images with detection results will be saved (not when using camera).
