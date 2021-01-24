@@ -1,1 +1,1 @@
-pyinstaller -F -c --add-data jaugey_suillot_d1_v1/;jaugey_suillot_d1_v1 --add-data label_map.json;. -i ./FaceMaskDetector.ico FaceMaskDetector.py
+pyinstaller -F -c --add-data jaugey_suillot_d0_v1/;jaugey_suillot_d0_v1 --add-data jaugey_suillot_d1_v1/;jaugey_suillot_d1_v1 --add-data label_map.json;. -i ./FaceMaskDetector.ico FaceMaskDetector.py
