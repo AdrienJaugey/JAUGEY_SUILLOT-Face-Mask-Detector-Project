@@ -88,7 +88,7 @@ class TensorflowDetector:
                 if mapText:
                     # <class_name> <confidence> <left> <top> <right> <bottom>
                     resMapText += "{}{} {:.6f} {} {} {} {}".format("" if resMapText == "" else "\n", className, score,
-                                                                   xMin, yMax, xMax, yMin)
+                                                                   xMin, yMin, xMax, yMax)
                 if drawImage:
                     color = tuple(self.__CATEGORY_INDEX__[classId]["color"])
                     image_with_detections = cv2.rectangle(image_with_detections, (xMin, yMin), (xMax, yMax), color, 3)
