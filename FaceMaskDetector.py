@@ -55,7 +55,8 @@ def inferenceOnFiles(detector: TensorflowDetector, saveImages=False, filePath=No
                 intentionnalStop = True
                 break
     avg_time = round(time_sum / len(IMAGE_PATHS), 4)
-    print("Time per frame : {:.4f} sec".format(avg_time))
+    print("Avg Time per frame : {:.4f} sec".format(avg_time))
+    print("Avg FPS : {:.4f}".format(1 / avg_time))
     if not noviz and not intentionnalStop:
         print("Inference(s) done ! Press q to quit...")
         if cv2.waitKey(0) & 0xFF == ord('q'):
@@ -66,6 +67,7 @@ def inferenceOnCamera(detector: TensorflowDetector, cap: VideoCapture, minScoreT
     """
     Run inference on camera stream
     :param detector: the TensorflowDetector instance
+    :param cap: the video capture
     :param minScoreThreshold: minimum score of detection to be shown
     :return: None
     """
@@ -73,10 +75,13 @@ def inferenceOnCamera(detector: TensorflowDetector, cap: VideoCapture, minScoreT
         minScoreThreshold = 0.6
     nb_avg = 0
     avg_fps = 0
-    while True:
+    frame_missing_countdown = 600
+    while frame_missing_countdown > 0:
         frame = cap.read()
         if frame is None:
+            frame_missing_countdown -= 1
             continue
+        frame_missing_countdown = 600
         frame_start_time = time()
         image, result = detector.process(frame)
         imageWithResult, _ = detector.applyResults(image, result, maxBoxesToDraw=30,
