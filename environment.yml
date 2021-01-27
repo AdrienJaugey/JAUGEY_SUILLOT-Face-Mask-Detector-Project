@@ -4,9 +4,8 @@ channels:
 dependencies:
   - python=3.7.9
   - pip:
+    - tensorflow==2.2.2
     - matplotlib==3.3.3
-    - numpy==1.19.5
+    - numpy==1.18.5
     - opencv-python==4.5.1.48
     - pyinstaller==4.2
-    - tensorflow==2.2.0
-

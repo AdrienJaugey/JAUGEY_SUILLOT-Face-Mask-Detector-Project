@@ -1,5 +1,5 @@
+tensorflow==2.2.2
 numpy
 matplotlib
 opencv-python
-tensorflow==2.2.0
 pyinstaller
