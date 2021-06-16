@@ -1,4 +1,4 @@
-tensorflow==2.2.2
+tensorflow
 numpy
 matplotlib
 opencv-python
