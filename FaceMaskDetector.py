@@ -1,11 +1,46 @@
 import os
 import sys
-import getopt
+import argparse
 from time import time
 import cv2
 # import MaskDataset
 from VideoCapture import VideoCapture
 from TensorflowDetector import TensorflowDetector
+
+
+def correct_path(value):
+    try:
+        path = os.path.normpath(value)
+        return path
+    except TypeError:
+        raise argparse.ArgumentTypeError(f"{value} is not a correct path")
+
+
+def existing_path(value):
+    path = correct_path(value)
+    if os.path.exists(path):
+        return path
+    else:
+        raise argparse.ArgumentTypeError(f"{value} path does not exists")
+
+
+def correct_score(value):
+    try:
+        value = float(value)
+        if 0. <= float(value) <= 1.:
+            return value
+        else:
+            raise argparse.ArgumentTypeError(f"{value} is not a number in [0; 1]")
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"{value} is not a number")
+
+
+def camera_name(value):
+    try:
+        value = int(value)
+        return value
+    except ValueError:
+        return value
 
 
 def inferenceOnFiles(detector: TensorflowDetector, saveImages=False, filePath=None, noviz=False,
@@ -100,91 +135,34 @@ def inferenceOnCamera(detector: TensorflowDetector, cap: VideoCapture, minScoreT
             break
 
 
-def displayHelp():
-    """
-    Display the help "screen"
-    :return: None
-    """
-    print('To start inference on the eval dataset :')
-    print('  FaceMaskDetector.exe --eval [--version <version name>] [--minScore <score>] [--save] [--noviz]\n')
-    print('To start inference on the camera stream :')
-    print('  FaceMaskDetector.exe --inference [--version <version name>] [--minScore <score>] [--camera <camera name>]\n')
-    print('To start inference on a single image :')
-    print('  FaceMaskDetector.exe --inference [--version <version name>] [--minScore <score>] --file <file path> [--save] [--noviz]\n')
-    print("Available arguments :")
-    print("\t--help, -h        Display this help.")
-    print("\t--eval, -e        Launch in Evaluation mode (run inferences on \"images\" folder).")
-    print("\t--inference, -i   Launch in Inference mode (Use camera flow as input).")
-    print("\t--version, -v     Select the model to use. Available models are : {}".format(", ".join(list(AVAILABLE_MODELS.keys()))))
-    print("\t--minScore, -m    Set the minimum score to display a detection (between 0 and 1 inclusive).")
-    print("\t--file, -f        Specify the input image for Inference mode instead of using camera.")
-    print("\t--save, -s        Images with detection results will be saved (not when using camera).")
-    print("\t--noviz           Image(s) will not be displayed.")
-    print("\t--camera, -c      Choosing camera/video stream to use. Default is 0.")
-
-
 def processArguments():
     """
     Process arguments of the command line to determine the execution mode
     :return: evalMode, inferenceMode, filePath, saveImages
     """
-    evalMode = False
-    inferenceMode = False
-    model = list(AVAILABLE_MODELS.keys())[0]
-    filePath = None
-    saveImages = False
-    noviz = False
-    minScore = None
-    cameraName = 0
-    try:
-        opts, args = getopt.getopt(sys.argv[1:], "heiv:f:sm:c:",
-                                   ["help", "eval", "inference", "version=", "file=", "save", "minScore=", "noviz", "camera="])
-    except getopt.GetoptError:
-        displayHelp()
-        sys.exit(2)
-    for opt, arg in opts:
-        if opt in ("-h", "--help"):
-            displayHelp()
-            sys.exit()
-        elif opt in ("-e", "--eval"):
-            evalMode = True
-            if evalMode == inferenceMode:
-                print("Cannot use evaluation mode and inference mode at the same time.\n")
-                displayHelp()
-                sys.exit(2)
-        elif opt in ("-i", "--inference"):
-            inferenceMode = True
-            if evalMode == inferenceMode:
-                print("Cannot use evaluation mode and inference mode at the same time.\n")
-                displayHelp()
-                sys.exit(2)
-        elif opt in ("-v", "--version"):
-            if arg in AVAILABLE_MODELS:
-                model = arg
-            else:
-                print("This version does not exists, please use available version.\n")
-                displayHelp()
-                sys.exit(2)
-        elif opt in ("-f", "--file"):
-            if not inferenceMode:
-                print("Cannot use --file argument if not in inference mode.\n")
-                displayHelp()
-                sys.exit(2)
-            filePath = arg
-        elif opt in ("-s", "--save"):
-            if inferenceMode:
-                if filePath is None:
-                    print("Cannot use --save argument.\n")
-                    displayHelp()
-                    sys.exit(2)
-            saveImages = True
-        elif opt in ("-m", "--minScore"):
-            minScore = float(arg)
-        elif opt == "--noviz":
-            noviz = True
-        elif opt in ("-c", "--camera"):
-            cameraName = arg
-    return evalMode, inferenceMode, model, filePath, saveImages, noviz, minScore, cameraName
+    parser = argparse.ArgumentParser("Face Mask Detector using EfficientDet D0 & D1. For more details see "
+                                     "https://github.com/AdrienJaugey/JAUGEY_SUILLOT-Face-Mask-Detector-Project")
+    parser.add_argument("-i", "--inference", dest="inference_mode", action="store_true",
+                        help="Start the Face Mask Detector in Inference mode on camera input or given image. "
+                             "Not adding this flag will start the Face Mask Detector in Evaluation mode (run"
+                             " inferences on \"images\" folder).")
+    parser.add_argument('-v', '--version', dest="model", type=str, default=list(AVAILABLE_MODELS.keys())[0],
+                        choices=list(AVAILABLE_MODELS.keys()), help="Select the model to use.")
+    parser.add_argument('-f', '--file', dest="file_path", default=None, type=existing_path,
+                        help="Specify the input image for Inference mode instead of using camera. "
+                             "Ignored if evaluation mode is enabled.")
+    parser.add_argument('-s', "--save", dest="save_images", action="store_true",
+                        help="Images with detection results will be saved (not when using camera).")
+    parser.add_argument("-m", "--minScore", dest="min_score", type=correct_score, default=None,
+                        help="Set the minimum score to display a detection (between 0 and 1 inclusive).")
+    parser.add_argument("-nv", "--noviz", dest="no_viz", help="Image(s) will not be displayed.",
+                        action="store_true")
+    parser.add_argument("-c", "--camera", dest="camera_name", help="Choosing camera/video stream to use. Default is 0.",
+                        type=camera_name, default=0)
+    args = parser.parse_args()
+
+    return (args.inference_mode, args.model, args.file_path,
+            args.save_images, args.no_viz, args.min_score, args.camera_name)
 
 
 def my_path(path_name):
@@ -200,22 +178,22 @@ def my_path(path_name):
 
 AVAILABLE_MODELS = {
     "d0_v1": {'path': "jaugey_suillot_d0_v1",
-              "description": "EfficientDet D0 (Batch of 8, 53100 steps, LR = .04, Warmup LR = .0001, 5310 warmup steps)"},
+              "description": "EfficientDet D0 (Batch of 8, 53100 steps, LR = .04, "
+                             "Warmup LR = .0001, 5310 warmup steps)"},
     "d1_v1": {'path': "jaugey_suillot_d1_v1",
-              "description": "EfficientDet D1 (Batch of 4, 53100 steps, LR = .002, Warmup LR = .0001, 12000 warmup steps)"}
+              "description": "EfficientDet D1 (Batch of 4, 53100 steps, LR = .002, "
+                             "Warmup LR = .0001, 12000 warmup steps)"}
 }
 
 if __name__ == "__main__":
-    evalMode, inferenceMode, model, filePath, saveImages, noviz, minScore, cameraName = processArguments()
+    inferenceMode, model, filePath, saveImages, noviz, minScore, cameraName = processArguments()
     print("#### START ####")
-    if not (evalMode or inferenceMode):
-        inferenceMode = True
-    print("Mode : ", "Evaluation" if evalMode else "Inference")
-    print("Model used : {}".format(AVAILABLE_MODELS[model]["description"]))
+    print(f"Mode : {'Inference' if inferenceMode else 'Evaluation'}")
+    print(f"Model used : {AVAILABLE_MODELS[model]['description']}")
     if minScore is not None:
-        print("Detection minimum threshold : {:.2%}".format(minScore))
+        print(f"Detection minimum threshold : {minScore:.2%}")
     if filePath is not None:
-        print("File Path : {}".format(filePath))
+        print(f"File Path : {filePath}")
     if saveImages:
         print("Image(s) will be saved")
     if noviz:
@@ -223,16 +201,16 @@ if __name__ == "__main__":
     if inferenceMode and filePath is None:
         camera = VideoCapture(cameraName)
         if cameraName != 0:
-            print("Camera to use : {}".format(cameraName))
+            print(f"Camera to use : {cameraName}")
     savedModelPath = my_path(os.path.join(AVAILABLE_MODELS[model]["path"], 'saved_model'))
     labelMapPath = my_path('label_map.json')
     print("\nLoading detector... ", end="", flush=True)
     start_time = time()
     detector = TensorflowDetector(savedModelPath=savedModelPath, labelMapPath=labelMapPath)
     elapsed_time = time() - start_time
-    print("Done ({:.2f} sec)\n".format(elapsed_time))
-    if (inferenceMode and filePath is not None) or evalMode:
-        if evalMode or saveImages:
+    print(f"Done ({elapsed_time:.2f} sec)\n")
+    if (inferenceMode and filePath is not None) or not inferenceMode:
+        if not inferenceMode or saveImages:
             os.makedirs(os.path.join("results", "map"), exist_ok=True)
         inferenceOnFiles(detector, saveImages=saveImages, filePath=filePath, noviz=noviz, minScoreThreshold=minScore)
     else:

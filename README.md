@@ -36,16 +36,26 @@ To start inference on the camera stream :
 To start inference on a single image :
   python FaceMaskDetector.py --inference [--version <version name>] [--minScore <score>] --file <file path> [--save] [--noviz]
 
-Available arguments :
-        --help, -h        Display this help.
-        --eval, -e        Launch in Evaluation mode (run inferences on "images" folder).
-        --inference, -i   Launch in Inference mode (Use camera flow as input).
-        --version, -v     Select the model to use. Available models are : d0_v1, d1_v1
-        --minScore, -m    Set the minimum score to display a detection (between 0 and 1 inclusive).
-        --file, -f        Specify the input image for Inference mode instead of using camera.
-        --save, -s        Images with detection results will be saved (not when using camera).
-        --noviz           Image(s) will not be displayed.
-        --camera, -c      Choosing camera/video stream to use. Default is 0.
+To display the help message :
+  python FaceMaskDetector.py -h
+
+usage: [-h] [-i] [-v {d0_v1,d1_v1}] [-f FILE_PATH] [-s] [-m MIN_SCORE] [-nv] [-c CAMERA_NAME]
+
+optional arguments:
+  -h, --help            Show this help message and exit
+  -i, --inference       Start the Face Mask Detector in Inference mode on camera input or given image. Not adding this flag 
+  						will start the Face Mask Detector in Evaluation mode (run inferences on "images" folder).
+  -v {d0_v1,d1_v1}, --version {d0_v1,d1_v1}
+                        Select the model to use.
+  -f FILE_PATH, --file FILE_PATH
+                        Specify the input image for Inference mode instead of using camera. Ignored if evaluation mode is enabled.
+  -s, --save            Images with detection results will be saved (not when using camera).
+  -m MIN_SCORE, --minScore MIN_SCORE
+                        Set the minimum score to display a detection (between 0 and 1 inclusive).
+  -nv, --noviz          Image(s) will not be displayed.
+  -c CAMERA_NAME, --camera CAMERA_NAME
+                        Choosing camera/video stream to use. Default is 0.
+
   ```
 
  ## Project Members
