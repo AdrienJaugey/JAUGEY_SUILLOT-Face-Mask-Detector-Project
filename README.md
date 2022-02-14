@@ -22,9 +22,7 @@ We will use the same classes as the Kaggle dataset :
   3. Using this environment, install pip packages using ```requirements.txt``` file
      * In your terminal, type ```python -m pip install -r requirements.txt```,
      * If you have a CUDA-Capable GPU, you can install CUDA and cuDNN for the last TensorFlow version.
-  4. ~~Build the application using the following command :~~
-     * ~~```pyinstaller -F -c --add-data jaugey_suillot_d0_v1/;jaugey_suillot_d0_v1 --add-data jaugey_suillot_d1_v1/;jaugey_suillot_d1_v1 --add-data label_map.json;. -i ./FaceMaskDetector.ico FaceMaskDetector.py```~~
-  5. Start the ~~```FaceMaskDetector.exe``` (located in the ```dist``` directory) using a command prompt~~ ```FaceMaskDetector.py``` script using same environment.
+  4. Start the ```FaceMaskDetector.py``` script using same environment.
 
   ```
 To start inference on the eval dataset :
@@ -59,7 +57,7 @@ optional arguments:
   ```
 
  ## Project Members
-|Name | Email adress |
+|Name | GitHub profile |
 |----------------|-----------------------------------|
-|Adrien JAUGEY | adrien_jaugey@etu.u-bourgogne.fr |
-|Bastien SUILLOT | bastien_suillot@etu.u-bourgogne.fr|
+|Adrien JAUGEY | https://github.com/AdrienJaugey |
+|Bastien SUILLOT | https://github.com/Ricotimes |
